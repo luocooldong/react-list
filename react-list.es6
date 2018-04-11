@@ -92,7 +92,6 @@ module.exports = class ReactList extends Component {
 
   componentDidMount() {
     this.updateFrame = this.updateFrame.bind(this);
-    window.addEventListener('resize', this.updateFrame);
     this.updateFrame(this.scrollTo.bind(this, this.props.initialIndex));
   }
 
@@ -123,9 +122,11 @@ module.exports = class ReactList extends Component {
   }
 
   componentWillUnmount() {
-    window.removeEventListener('resize', this.updateFrame);
-    this.scrollParent.removeEventListener('scroll', this.updateFrame, PASSIVE);
-    this.scrollParent.removeEventListener('mousewheel', NOOP, PASSIVE);
+    const {scrollParent, updateFrame} = this;
+    (scrollParent instanceof Window ? scrollParent : window)
+      .removeEventListener('resize', updateFrame);
+    scrollParent.removeEventListener('scroll', updateFrame, PASSIVE);
+    scrollParent.removeEventListener('mousewheel', NOOP, PASSIVE);
   }
 
   getOffset(el) {
@@ -157,11 +158,12 @@ module.exports = class ReactList extends Component {
     const {scrollParent} = this;
     const {axis} = this.props;
     const scrollKey = SCROLL_START_KEYS[axis];
-    const actual = scrollParent === window ?
+    const actual = scrollParent instanceof Window ?
       // Firefox always returns document.body[scrollKey] as 0 and Chrome/Safari
       // always return document.documentElement[scrollKey] as 0, so take
       // whichever has a value.
-      document.body[scrollKey] || document.documentElement[scrollKey] :
+      scrollParent.document.body[scrollKey] ||
+      scrollParent.document.documentElement[scrollKey] :
       scrollParent[scrollKey];
     const max = this.getScrollSize() - this.getViewportSize();
     const scroll = Math.max(0, Math.min(actual, max));
@@ -173,7 +175,7 @@ module.exports = class ReactList extends Component {
     const {scrollParent} = this;
     const {axis} = this.props;
     offset += this.getOffset(this.getEl());
-    if (scrollParent === window) return window.scrollTo(0, offset);
+    if (scrollParent instanceof Window) return scrollParent.scrollTo(0, offset);
 
     offset -= this.getOffset(this.scrollParent);
     scrollParent[SCROLL_START_KEYS[axis]] = offset;
@@ -182,8 +184,8 @@ module.exports = class ReactList extends Component {
   getViewportSize() {
     const {scrollParent} = this;
     const {axis} = this.props;
-    return scrollParent === window ?
-      window[INNER_SIZE_KEYS[axis]] :
+    return scrollParent instanceof Window ?
+      scrollParent[INNER_SIZE_KEYS[axis]] :
       scrollParent[CLIENT_SIZE_KEYS[axis]];
   }
 
@@ -191,7 +193,7 @@ module.exports = class ReactList extends Component {
     const {scrollParent} = this;
     const {body, documentElement} = document;
     const key = SCROLL_SIZE_KEYS[this.props.axis];
-    return scrollParent === window ?
+    return scrollParent instanceof Window ?
       Math.max(body[key], documentElement[key]) :
       scrollParent[key];
   }
@@ -258,13 +260,20 @@ module.exports = class ReactList extends Component {
   updateScrollParent() {
     const prev = this.scrollParent;
     this.scrollParent = this.getScrollParent();
-    if (prev === this.scrollParent) return;
+    if (prev === scrollParent) return;
+
+    const {scrollParent, updateFrame} = this;
     if (prev) {
-      prev.removeEventListener('scroll', this.updateFrame);
+      (prev instanceof Window ? prev : window)
+        .removeEventListener('resize', updateFrame);
+      prev.removeEventListener('scroll', updateFrame);
       prev.removeEventListener('mousewheel', NOOP);
     }
-    this.scrollParent.addEventListener('scroll', this.updateFrame, PASSIVE);
-    this.scrollParent.addEventListener('mousewheel', NOOP, PASSIVE);
+
+    (scrollParent instanceof Window ? scrollParent : window)
+      .addEventListener('resize', updateFrame);
+    scrollParent.addEventListener('scroll', updateFrame, PASSIVE);
+    scrollParent.addEventListener('mousewheel', NOOP, PASSIVE);
   }
 
   updateSimpleFrame(cb) {

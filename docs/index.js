@@ -21564,20 +21564,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     };
   }
 
-  var _extends = Object.assign || function (target) {
-    for (var i = 1; i < arguments.length; i++) {
-      var source = arguments[i];
-
-      for (var key in source) {
-        if (Object.prototype.hasOwnProperty.call(source, key)) {
-          target[key] = source[key];
-        }
-      }
-    }
-
-    return target;
-  };
-
   function _classCallCheck(instance, Constructor) {
     if (!(instance instanceof Constructor)) {
       throw new TypeError("Cannot call a class as a function");
@@ -21704,7 +21690,6 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
       key: 'componentDidMount',
       value: function componentDidMount() {
         this.updateFrame = this.updateFrame.bind(this);
-        window.addEventListener('resize', this.updateFrame);
         this.updateFrame(this.scrollTo.bind(this, this.props.initialIndex));
       }
     }, {
@@ -21739,9 +21724,12 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
     }, {
       key: 'componentWillUnmount',
       value: function componentWillUnmount() {
-        window.removeEventListener('resize', this.updateFrame);
-        this.scrollParent.removeEventListener('scroll', this.updateFrame, PASSIVE);
-        this.scrollParent.removeEventListener('mousewheel', NOOP, PASSIVE);
+        var scrollParent = this.scrollParent,
+            updateFrame = this.updateFrame;
+
+        (scrollParent instanceof Window ? scrollParent : window).removeEventListener('resize', updateFrame);
+        scrollParent.removeEventListener('scroll', updateFrame, PASSIVE);
+        scrollParent.removeEventListener('mousewheel', NOOP, PASSIVE);
       }
     }, {
       key: 'getOffset',
@@ -21785,11 +21773,11 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         var axis = this.props.axis;
 
         var scrollKey = SCROLL_START_KEYS[axis];
-        var actual = scrollParent === window ?
+        var actual = scrollParent instanceof Window ?
         // Firefox always returns document.body[scrollKey] as 0 and Chrome/Safari
         // always return document.documentElement[scrollKey] as 0, so take
         // whichever has a value.
-        document.body[scrollKey] || document.documentElement[scrollKey] : scrollParent[scrollKey];
+        scrollParent.document.body[scrollKey] || scrollParent.document.documentElement[scrollKey] : scrollParent[scrollKey];
         var max = this.getScrollSize() - this.getViewportSize();
         var scroll = Math.max(0, Math.min(actual, max));
         var el = this.getEl();
@@ -21802,7 +21790,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         var axis = this.props.axis;
 
         offset += this.getOffset(this.getEl());
-        if (scrollParent === window) return window.scrollTo(0, offset);
+        if (scrollParent instanceof Window) return scrollParent.scrollTo(0, offset);
 
         offset -= this.getOffset(this.scrollParent);
         scrollParent[SCROLL_START_KEYS[axis]] = offset;
@@ -21813,7 +21801,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
         var scrollParent = this.scrollParent;
         var axis = this.props.axis;
 
-        return scrollParent === window ? window[INNER_SIZE_KEYS[axis]] : scrollParent[CLIENT_SIZE_KEYS[axis]];
+        return scrollParent instanceof Window ? scrollParent[INNER_SIZE_KEYS[axis]] : scrollParent[CLIENT_SIZE_KEYS[axis]];
       }
     }, {
       key: 'getScrollSize',
@@ -21824,7 +21812,7 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
             documentElement = _document.documentElement;
 
         var key = SCROLL_SIZE_KEYS[this.props.axis];
-        return scrollParent === window ? Math.max(body[key], documentElement[key]) : scrollParent[key];
+        return scrollParent instanceof Window ? Math.max(body[key], documentElement[key]) : scrollParent[key];
       }
     }, {
       key: 'hasDeterminateSize',
@@ -21903,13 +21891,20 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
       value: function updateScrollParent() {
         var prev = this.scrollParent;
         this.scrollParent = this.getScrollParent();
-        if (prev === this.scrollParent) return;
+        if (prev === scrollParent) return;
+
+        var scrollParent = this.scrollParent,
+            updateFrame = this.updateFrame;
+
         if (prev) {
+          (prev instanceof Window ? prev : window).removeEventListener('resize', this.updateFrame);
           prev.removeEventListener('scroll', this.updateFrame);
           prev.removeEventListener('mousewheel', NOOP);
         }
-        this.scrollParent.addEventListener('scroll', this.updateFrame, PASSIVE);
-        this.scrollParent.addEventListener('mousewheel', NOOP, PASSIVE);
+
+        (scrollParent instanceof Window ? scrollParent : window).addEventListener('resize', updateFrame);
+        scrollParent.addEventListener('scroll', updateFrame, PASSIVE);
+        scrollParent.addEventListener('mousewheel', NOOP, PASSIVE);
       }
     }, {
       key: 'updateSimpleFrame',
@@ -22182,9 +22177,9 @@ var _typeof = typeof Symbol === "function" && typeof Symbol.iterator === "symbol
           WebkitTransform: transform,
           transform: transform
         };
-        return _react2.default.createElement('div', _extends({ style: style }, { ref: function ref(c) {
+        return _react2.default.createElement('div', { style: style, ref: function ref(c) {
             return _this4.el = c;
-          } }), _react2.default.createElement('div', { style: listStyle }, items));
+          } }, _react2.default.createElement('div', { style: listStyle }, items));
       }
     }]);
 
